@@ -1,21 +1,23 @@
 package com.itransition.android.dolbik.andiclock;
 
 import android.content.Context;
-import android.content.res.Resources;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Point;
 import android.graphics.PointF;
 import android.graphics.RadialGradient;
+import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Shader;
+import android.graphics.Typeface;
+import android.os.Handler;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.View;
-import android.view.accessibility.AccessibilityEvent;
 
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
 
 /**
@@ -24,21 +26,11 @@ import java.util.Date;
 public class AnDiView extends View {
 
     // Compass direction
-    private float bearing;
     private Paint markerPaint;
     private Paint textPaint;
+    private Paint mainCirclePaint;
     private Paint circlePaint;
     private float textHeight;
-
-
-
-
-
-
-
-    private float pitch;
-    private float roll;
-
 
     private int[] glassGradientColors;
     private float[] glassGradientPositions;
@@ -46,12 +38,13 @@ public class AnDiView extends View {
     private int[] glassGradientColorsInner;
     private float[] glassGradientPositionsInner;
 
-    private int skyHorizonColorFrom;
-    private int skyHorizonColorTo;
-    private int groundHorizonColorFrom;
-    private int groundHorizonColorTo;
 
     private enum CompassDirection { N, NE, E,  SE, S, SW, W, NW }
+
+    private CountDownTimer countDownTimer;
+
+
+
 
     public AnDiView(Context context) {
         super(context);
@@ -74,10 +67,16 @@ public class AnDiView extends View {
     private void initAnDiView() {
         setFocusable(true);
 
-        Resources resources = getResources();
+        countDownTimer = new CountDownTimer(1000);
+        countDownTimer.start();
+
+        mainCirclePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        mainCirclePaint.setColor(getResources().getColor(R.color.background_color));
+        mainCirclePaint.setStrokeWidth(1);
+        mainCirclePaint.setStyle(Paint.Style.FILL_AND_STROKE);
 
         circlePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        circlePaint.setColor(resources.getColor(R.color.background_color));
+        circlePaint.setColor(getResources().getColor(R.color.background_color));
         circlePaint.setStrokeWidth(1);
         circlePaint.setStyle(Paint.Style.FILL_AND_STROKE);
 
@@ -89,11 +88,11 @@ public class AnDiView extends View {
         textHeight =  textPaint.getTextSize();
 
         markerPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        markerPaint.setColor(resources.getColor(R.color.marker_color));
+        markerPaint.setColor(getResources().getColor(R.color.marker_color));
         markerPaint.setAlpha(200);
         markerPaint.setStrokeWidth(5);
         markerPaint.setStyle(Paint.Style.STROKE);
-        markerPaint.setShadowLayer(2, 1, 1, resources.getColor(R.color.shadow_color));
+        markerPaint.setShadowLayer(2, 1, 1, getResources().getColor(R.color.shadow_color));
 
 
         // Translucent glass dome & volume effect
@@ -101,7 +100,7 @@ public class AnDiView extends View {
         glassGradientPositions = new float[5];
 
         int glassColor = 245;
-        glassGradientColors[4] = Color.argb(0, glassColor, glassColor, glassColor);
+        glassGradientColors[4] = Color.argb(10, glassColor, glassColor, glassColor);
         glassGradientColors[3] = Color.argb(100, glassColor, glassColor, glassColor);
         glassGradientColors[2] = Color.argb(80, glassColor, glassColor, glassColor);
         glassGradientColors[1] = Color.argb(0, glassColor, glassColor, glassColor);
@@ -129,14 +128,6 @@ public class AnDiView extends View {
         glassGradientPositionsInner[1] = 1-0.20f;
         glassGradientPositionsInner[0] = 1-1.0f;
 
-
-
-
-        // Sky & Earth
-        skyHorizonColorFrom = resources.getColor(R.color.horizon_sky_from);
-        skyHorizonColorTo = resources.getColor(R.color.horizon_sky_to);
-        groundHorizonColorFrom = resources.getColor(R.color.horizon_ground_from);
-        groundHorizonColorTo = resources.getColor(R.color.horizon_ground_to);
     }
 
 
@@ -172,14 +163,6 @@ public class AnDiView extends View {
     }
 
 
-    public float getBearing() {
-        return bearing;
-    }
-    public void setBearing(float bearing) {
-        this.bearing = bearing;
-        // Changed direction
-        sendAccessibilityEvent(AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED);
-    }
 
 
     @Override
@@ -192,12 +175,11 @@ public class AnDiView extends View {
         int height = getMeasuredHeight();
         int width = getMeasuredWidth();
 
-        int px = width/2;
-        int py = height/2;
+        int px = width/2 - 50;
+        int py = height/2 - 50;
         Point center = new Point(px, py);
 
         int radius = Math.min(px, py);
-        Log.d("Pasha", "radius " + radius);
 
         RectF firstBox = new RectF(
                 center.x - radius,
@@ -212,7 +194,6 @@ public class AnDiView extends View {
                 center.y + radius - ringWidth);
 
         float secondRadius = secondBox.height()/2;
-        Log.d("Pasha", "secondRadius "+secondRadius);
 
         RectF thirdBox = new RectF(
                 center.x - secondRadius + secondRingWidth,
@@ -221,7 +202,6 @@ public class AnDiView extends View {
                 center.y + secondRadius - secondRingWidth);
 
         float thirdRadius = thirdBox.height()/2;
-        Log.d("Pasha", "thirdRadius " + thirdRadius);
 
         RectF fourthBox = new RectF(
                 center.x - radius/2,
@@ -229,7 +209,6 @@ public class AnDiView extends View {
                 center.x + radius/2,
                 center.y + radius/2);
         float fourthRadius = fourthBox.height()/2;
-        Log.d("Pasha", "fourthBox " + fourthBox);
 
         RectF fifthBox = new RectF(
                 center.x - fourthRadius + fourthRingWidth,
@@ -240,8 +219,7 @@ public class AnDiView extends View {
 
 
 
-
-        canvas.drawOval(firstBox, circlePaint);
+        canvas.drawOval(firstBox, mainCirclePaint);
 
         for( int i = 0; i < 8; i++) {
             CompassDirection cd = CompassDirection.values()[i];
@@ -250,7 +228,7 @@ public class AnDiView extends View {
 
             PointF headStringCenter = new PointF(
                     center.x ,
-                    firstBox.top + textHeight + 5);
+                    firstBox.top + textHeight + 10);
 
                 canvas.drawText(
                         text,
@@ -262,6 +240,7 @@ public class AnDiView extends View {
 
         circlePaint.setColor(Color.BLACK);
         canvas.drawOval(secondBox, circlePaint);
+        canvas.save();
 
         circlePaint.setColor(Color.RED);
         canvas.drawOval(thirdBox, circlePaint);
@@ -300,9 +279,38 @@ public class AnDiView extends View {
 
         canvas.drawOval(thirdBox, glassPaint);
 
+        Calendar c = Calendar.getInstance();
+
+        int minute = c.get(Calendar.MINUTE);
+        circlePaint.setColor(Color.WHITE);
+        circlePaint.setStyle(Paint.Style.FILL_AND_STROKE);
+        canvas.drawCircle(px, py, 20, circlePaint);
+        circlePaint.setStrokeWidth(10);
+        canvas.save();
+        canvas.rotate(minute*6, px, py);
+        canvas.drawLine(px, py+50, px, py - thirdRadius + 70 , circlePaint);
+        canvas.restore();
 
 
-        circlePaint.setColor(Color.BLACK);
+        int hour = c.get(Calendar.HOUR_OF_DAY);
+        circlePaint.setStrokeWidth(15);
+        canvas.save();
+        canvas.rotate((float) ( (hour*30) + (minute*0.5) ), px, py);
+        canvas.drawLine(px, py+50, px, py - thirdRadius + 110 , circlePaint);
+        canvas.restore();
+
+
+        int seconds = c.get(Calendar.SECOND);
+        circlePaint.setStrokeWidth(5);
+        canvas.save();
+        canvas.rotate(seconds*6, px, py);
+        canvas.drawLine(px, py+50, px, py - thirdRadius , circlePaint);
+        canvas.restore();
+
+
+
+
+       circlePaint.setColor(Color.BLACK);
         circlePaint.setStrokeWidth(10);
         circlePaint.setStyle(Paint.Style.FILL_AND_STROKE);
         canvas.drawOval(fourthBox, circlePaint);
@@ -330,7 +338,12 @@ public class AnDiView extends View {
 
         SimpleDateFormat sdfTime = new SimpleDateFormat("HH:mm:ss");
         String currentTime = sdfTime.format(new Date());
-        int currentTimeFontSize = 100;
+        int currentTimeFontSize = 110;
+
+
+        SimpleDateFormat sdfDay = new SimpleDateFormat("EEEE");
+        String currentDayOfTheWeek = sdfDay.format(new Date());
+        int currentDayOfTheWeekSize = 50;
 
 
         Paint fontPaint = new Paint();
@@ -339,17 +352,67 @@ public class AnDiView extends View {
         float dateWidth = fontPaint.measureText(currentDate);
         canvas.drawText(currentDate, px - dateWidth/2, py - fifthRadius/2, fontPaint);
 
+
+        fontPaint.setTextSize(currentDayOfTheWeekSize);
+        float currentDayOfTheWeekWidth = fontPaint.measureText(currentDayOfTheWeek);
+        canvas.drawText(currentDayOfTheWeek, px - currentDayOfTheWeekWidth/2, py + fifthRadius/2 +40, fontPaint);
+
+
         fontPaint.setTextSize(currentTimeFontSize);
+        fontPaint.setStyle(Paint.Style.FILL_AND_STROKE);
+        fontPaint.setTypeface(Typeface.create(Typeface.SERIF, Typeface.BOLD));
         float timeWidth = fontPaint.measureText(currentTime);
-        float timeHeight = fontPaint.descent() - fontPaint.ascent();
-        canvas.drawText(currentTime, px - timeWidth/2, py + timeHeight, fontPaint);
+        Rect textBounds = new Rect();
+        fontPaint.getTextBounds(currentTime, 0, currentTime.length(), textBounds);
+        float timeHeight = textBounds.height();
+        canvas.drawText(currentTime, px - timeWidth/2, py + timeHeight/2, fontPaint);
+
+
+    }
 
 
 
+    private  class CountDownTimer {
+        private long countDownInterval;
+        private boolean status;
 
+        public CountDownTimer( long pCountDownInterval) {
 
+            this.countDownInterval = pCountDownInterval;
+            status = false;
+            Initialize();
+        }
 
+        private void stop() {
+            status = false;
+        }
+        private void start() {
+            status = true;
+        }
 
+        private void onFinish(){
+            Log.d("Pasha", "onFinish");
+
+        }
+
+        public void Initialize()
+        {
+            final Handler handler = new Handler();
+            Log.d("Pasha", "starting");
+            final Runnable counter = new Runnable(){
+
+                public void run(){
+                    handler.postDelayed(this, countDownInterval);
+                    if(!status) {
+                        handler.removeCallbacks(this);
+                        onFinish();
+                    } else {
+                        AnDiView.this.invalidate();
+                    }
+                }
+            };
+            handler.postDelayed(counter, 0);
+        }
     }
 
 
