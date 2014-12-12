@@ -5,7 +5,6 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Point;
-import android.graphics.PointF;
 import android.graphics.RadialGradient;
 import android.graphics.Rect;
 import android.graphics.RectF;
@@ -25,11 +24,13 @@ import java.util.Date;
  */
 public class AnDiView extends View {
 
-    // Compass direction
     private Paint markerPaint;
     private Paint textPaint;
     private Paint mainCirclePaint;
-    private Paint circlePaint;
+    private Paint secondCirclePaint;
+    private Paint thirdCirclePaint;
+    private Paint fourthCirclePaint;
+    private Paint fifthCirclePaint;
     private float textHeight;
 
     private int[] glassGradientColors;
@@ -42,6 +43,39 @@ public class AnDiView extends View {
     private enum CompassDirection { N, NE, E,  SE, S, SW, W, NW }
 
     private CountDownTimer countDownTimer;
+
+    private int ringWidth;
+    private float secondRingWidth;
+    private float fourthRingWidth;
+    private int heightDivisionHours = 20;
+    private int heightDivisionMinute;
+
+    private int height;
+    private int width;
+
+    private int px ;
+    private int py;
+    private Point center;
+
+    private int radius;
+    private RectF firstBox;
+    private RectF secondBox;
+    private RectF thirdBox;
+    private RectF fourthBox;
+    private RectF fifthBox;
+
+    private float secondRadius;
+    private float thirdRadius;
+    private float fourthRadius;
+    private float fifthRadius;
+
+    private float clockNumber;
+    private int clockNumberPosition;
+
+    private Paint glassPaint;
+    private Paint arrowsPaint;
+    private Paint glassPaintInner;
+    private Paint fontPaint ;
 
 
 
@@ -65,23 +99,32 @@ public class AnDiView extends View {
 
     // Initialization view
     private void initAnDiView() {
+
+        Log.d("Pasha", AnDiView.this.getMeasuredWidth()+"");
         setFocusable(true);
 
         countDownTimer = new CountDownTimer(1000);
         countDownTimer.start();
 
-        mainCirclePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        mainCirclePaint.setColor(getResources().getColor(R.color.background_color));
-        mainCirclePaint.setStrokeWidth(1);
-        mainCirclePaint.setStyle(Paint.Style.FILL_AND_STROKE);
+        ringWidth = 20;
+        secondRingWidth = 10;
+        fourthRingWidth = 5;
 
-        circlePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        circlePaint.setColor(getResources().getColor(R.color.background_color));
-        circlePaint.setStrokeWidth(1);
-        circlePaint.setStyle(Paint.Style.FILL_AND_STROKE);
+        mainCirclePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        mainCirclePaint.setColor(Color.BLACK);
+        mainCirclePaint.setStrokeWidth(5);
+        mainCirclePaint.setStyle(Paint.Style.STROKE);
+
+        secondCirclePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        secondCirclePaint.setColor(Color.BLACK);
+        secondCirclePaint.setStrokeWidth(1);
+        secondCirclePaint.setStyle(Paint.Style.FILL_AND_STROKE);
+
+        thirdCirclePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        thirdCirclePaint.setColor(Color.RED);
 
         textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        textPaint.setColor(Color.WHITE);
+        textPaint.setColor(Color.BLACK);
         textPaint.setFakeBoldText(true);
         textPaint.setSubpixelText(true);
         textPaint.setTextSize(30);
@@ -93,6 +136,17 @@ public class AnDiView extends View {
         markerPaint.setStrokeWidth(5);
         markerPaint.setStyle(Paint.Style.STROKE);
         markerPaint.setShadowLayer(2, 1, 1, getResources().getColor(R.color.shadow_color));
+
+        clockNumber = 50;
+        clockNumberPosition = 80;
+        heightDivisionMinute = 10;
+
+        glassPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        arrowsPaint =  new Paint();
+        arrowsPaint.setColor(Color.WHITE);
+        arrowsPaint.setStyle(Paint.Style.FILL_AND_STROKE);
+
+        glassPaintInner =  new Paint(Paint.ANTI_ALIAS_FLAG);
 
 
         // Translucent glass dome & volume effect
@@ -127,6 +181,17 @@ public class AnDiView extends View {
         glassGradientPositionsInner[2] = 1-0.10f;
         glassGradientPositionsInner[1] = 1-0.20f;
         glassGradientPositionsInner[0] = 1-1.0f;
+
+        fourthCirclePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        fourthCirclePaint.setColor(Color.BLACK);
+        fourthCirclePaint.setStrokeWidth(10);
+        fourthCirclePaint.setStyle(Paint.Style.FILL_AND_STROKE);
+
+        fifthCirclePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        fifthCirclePaint.setColor(Color.RED);
+
+        fontPaint = new Paint();
+        fontPaint.setColor(Color.WHITE);
 
     }
 
@@ -168,83 +233,53 @@ public class AnDiView extends View {
     @Override
     protected void onDraw(Canvas canvas) {
 
-        float ringWidth = textHeight + 20;
-        float secondRingWidth = 5;
-        float fourthRingWidth = 5;
+        height = getMeasuredHeight();
+        width = getMeasuredWidth();
 
-        int height = getMeasuredHeight();
-        int width = getMeasuredWidth();
+        px = width/2;
+        py = height/2;
+        center = new Point(px, py);
 
-        int px = width/2 - 50;
-        int py = height/2 - 50;
-        Point center = new Point(px, py);
+        radius = Math.min(px, py);
 
-        int radius = Math.min(px, py);
-
-        RectF firstBox = new RectF(
+        firstBox = new RectF(
                 center.x - radius,
                 center.y - radius,
                 center.x + radius,
                 center.y + radius);
 
-        RectF secondBox = new RectF(
+        secondBox = new RectF(
                 center.x - radius + ringWidth,
                 center.y - radius + ringWidth,
                 center.x + radius - ringWidth,
                 center.y + radius - ringWidth);
+        secondRadius = secondBox.height()/2;
 
-        float secondRadius = secondBox.height()/2;
-
-        RectF thirdBox = new RectF(
+        thirdBox = new RectF(
                 center.x - secondRadius + secondRingWidth,
                 center.y - secondRadius + secondRingWidth,
                 center.x + secondRadius - secondRingWidth,
                 center.y + secondRadius - secondRingWidth);
+        thirdRadius = thirdBox.height()/2;
 
-        float thirdRadius = thirdBox.height()/2;
-
-        RectF fourthBox = new RectF(
+        fourthBox = new RectF(
                 center.x - radius/2,
                 center.y - radius/2,
                 center.x + radius/2,
                 center.y + radius/2);
-        float fourthRadius = fourthBox.height()/2;
+        fourthRadius = fourthBox.height()/2;
 
-        RectF fifthBox = new RectF(
+        fifthBox = new RectF(
                 center.x - fourthRadius + fourthRingWidth,
                 center.y - fourthRadius + fourthRingWidth,
                 center.x + fourthRadius - fourthRingWidth,
                 center.y + fourthRadius - fourthRingWidth);
-        float fifthRadius = fourthBox.height()/2;
-
+        fifthRadius = fourthBox.height()/2;
 
 
         canvas.drawOval(firstBox, mainCirclePaint);
-
-        for( int i = 0; i < 8; i++) {
-            CompassDirection cd = CompassDirection.values()[i];
-            String text = cd.toString();
-            float textSizeWidth = textPaint.measureText(text);
-
-            PointF headStringCenter = new PointF(
-                    center.x ,
-                    firstBox.top + textHeight + 10);
-
-                canvas.drawText(
-                        text,
-                        headStringCenter.x - textSizeWidth/2,
-                        headStringCenter.y,
-                        textPaint);
-            canvas.rotate(45, center.x, center.y);
-        }
-
-        circlePaint.setColor(Color.BLACK);
-        canvas.drawOval(secondBox, circlePaint);
-        canvas.save();
-
-        circlePaint.setColor(Color.RED);
-        canvas.drawOval(thirdBox, circlePaint);
-
+        canvas.drawOval(secondBox, secondCirclePaint);
+        canvas.drawOval(thirdBox, thirdCirclePaint);
 
 
         canvas.save();
@@ -253,18 +288,44 @@ public class AnDiView extends View {
 
             if( i % 5 == 0) {
                 markerPaint.setStrokeWidth(10);
-                canvas.drawLine(px, py-thirdRadius, px, py-thirdRadius+20, markerPaint );
+                canvas.drawLine(px, py-thirdRadius, px, py-thirdRadius+heightDivisionHours, markerPaint );
                 String number = String.valueOf(i/5 +1);
-                textPaint.setTextSize(40);
+                textPaint.setTextSize(clockNumber);
                 float numberWidth = textPaint.measureText(number);
-                canvas.drawText(number, px-numberWidth/2, py-thirdRadius +60, textPaint);
+                canvas.drawText(number, px-numberWidth/2, py-thirdRadius+clockNumberPosition, textPaint);
             } else{
                 markerPaint.setStrokeWidth(5);
-                canvas.drawLine(px, py-thirdRadius, px, py-thirdRadius+10, markerPaint );
+                canvas.drawLine(px, py-thirdRadius, px, py-thirdRadius+heightDivisionMinute, markerPaint );
             }
 
             canvas.rotate(6, center.x, center.y);
         }
+        canvas.restore();
+
+
+        Calendar c = Calendar.getInstance();
+
+        int minute = c.get(Calendar.MINUTE);
+        canvas.drawCircle(px, py, 20, arrowsPaint);
+        arrowsPaint.setStrokeWidth(10);
+        canvas.save();
+        canvas.rotate(minute*6, px, py);
+        canvas.drawLine(px, py+50, px, py - thirdRadius + heightDivisionHours + heightDivisionMinute , arrowsPaint);
+        canvas.restore();
+
+
+        int hour = c.get(Calendar.HOUR_OF_DAY);
+        arrowsPaint.setStrokeWidth(15);
+        canvas.save();
+        canvas.rotate((float) ( (hour*30) + (minute*0.5) ), px, py);
+        canvas.drawLine(px, py+50, px, py - thirdRadius + clockNumberPosition +heightDivisionHours + heightDivisionMinute , arrowsPaint);
+        canvas.restore();
+
+        int seconds = c.get(Calendar.SECOND);
+        arrowsPaint.setStrokeWidth(5);
+        canvas.save();
+        canvas.rotate(seconds*6, px, py);
+        canvas.drawLine(px, py+50, px, py - thirdRadius , arrowsPaint);
         canvas.restore();
 
 
@@ -274,49 +335,42 @@ public class AnDiView extends View {
                 glassGradientPositions,
                 Shader.TileMode.CLAMP);
 
-        Paint glassPaint = new Paint();
         glassPaint.setShader(glassShader);
-
         canvas.drawOval(thirdBox, glassPaint);
 
-        Calendar c = Calendar.getInstance();
 
-        int minute = c.get(Calendar.MINUTE);
-        circlePaint.setColor(Color.WHITE);
-        circlePaint.setStyle(Paint.Style.FILL_AND_STROKE);
-        canvas.drawCircle(px, py, 20, circlePaint);
-        circlePaint.setStrokeWidth(10);
-        canvas.save();
-        canvas.rotate(minute*6, px, py);
-        canvas.drawLine(px, py+50, px, py - thirdRadius + 70 , circlePaint);
-        canvas.restore();
+        canvas.drawOval(fourthBox, fourthCirclePaint);
+
+        canvas.drawOval(fifthBox, fifthCirclePaint);
 
 
-        int hour = c.get(Calendar.HOUR_OF_DAY);
-        circlePaint.setStrokeWidth(15);
-        canvas.save();
-        canvas.rotate((float) ( (hour*30) + (minute*0.5) ), px, py);
-        canvas.drawLine(px, py+50, px, py - thirdRadius + 110 , circlePaint);
-        canvas.restore();
+        SimpleDateFormat sdfDate = new SimpleDateFormat("dd.MM.yyyy");
+        String currentDate = sdfDate.format(new Date());
+
+        SimpleDateFormat sdfTime = new SimpleDateFormat("HH:mm:ss");
+        String currentTime = sdfTime.format(new Date());
+
+        SimpleDateFormat sdfDay = new SimpleDateFormat("EEEE");
+        String currentDayOfTheWeek = sdfDay.format(new Date());
+
+        fontPaint.setTextSize((float) (fifthRadius/4.2));
+        float dateWidth = fontPaint.measureText(currentDate);
+        canvas.drawText(currentDate, px - dateWidth/2, py - fifthRadius/2, fontPaint);
 
 
-        int seconds = c.get(Calendar.SECOND);
-        circlePaint.setStrokeWidth(5);
-        canvas.save();
-        canvas.rotate(seconds*6, px, py);
-        canvas.drawLine(px, py+50, px, py - thirdRadius , circlePaint);
-        canvas.restore();
+        fontPaint.setTextSize((float) (fifthRadius/4.2));
+        float currentDayOfTheWeekWidth = fontPaint.measureText(currentDayOfTheWeek);
+        canvas.drawText(currentDayOfTheWeek, px - currentDayOfTheWeekWidth/2, py + fifthRadius/2 +40, fontPaint);
 
 
-
-
-       circlePaint.setColor(Color.BLACK);
-        circlePaint.setStrokeWidth(10);
-        circlePaint.setStyle(Paint.Style.FILL_AND_STROKE);
-        canvas.drawOval(fourthBox, circlePaint);
-
-        circlePaint.setColor(Color.RED);
-        canvas.drawOval(fifthBox, circlePaint);
+        fontPaint.setTextSize((float) (fifthRadius/2.2));
+        fontPaint.setStyle(Paint.Style.FILL_AND_STROKE);
+        fontPaint.setTypeface(Typeface.create(Typeface.SERIF, Typeface.BOLD));
+        float timeWidth = fontPaint.measureText(currentTime);
+        Rect textBounds = new Rect();
+        fontPaint.getTextBounds(currentTime, 0, currentTime.length(), textBounds);
+        float timeHeight = textBounds.height();
+        canvas.drawText(currentTime, px - timeWidth/2, py + timeHeight/2, fontPaint);
 
 
         RadialGradient glassShaderInner = new RadialGradient(
@@ -325,47 +379,8 @@ public class AnDiView extends View {
                 glassGradientPositionsInner,
                 Shader.TileMode.CLAMP);
 
-        Paint glassPaintInner = new Paint();
         glassPaintInner.setShader(glassShaderInner);
-
         canvas.drawOval(fourthBox, glassPaintInner);
-
-
-
-        SimpleDateFormat sdfDate = new SimpleDateFormat("dd.MM.yyyy");
-        String currentDate = sdfDate.format(new Date());
-        int currentDateFontSize = 50;
-
-        SimpleDateFormat sdfTime = new SimpleDateFormat("HH:mm:ss");
-        String currentTime = sdfTime.format(new Date());
-        int currentTimeFontSize = 110;
-
-
-        SimpleDateFormat sdfDay = new SimpleDateFormat("EEEE");
-        String currentDayOfTheWeek = sdfDay.format(new Date());
-        int currentDayOfTheWeekSize = 50;
-
-
-        Paint fontPaint = new Paint();
-        fontPaint.setColor(Color.WHITE);
-        fontPaint.setTextSize(currentDateFontSize);
-        float dateWidth = fontPaint.measureText(currentDate);
-        canvas.drawText(currentDate, px - dateWidth/2, py - fifthRadius/2, fontPaint);
-
-
-        fontPaint.setTextSize(currentDayOfTheWeekSize);
-        float currentDayOfTheWeekWidth = fontPaint.measureText(currentDayOfTheWeek);
-        canvas.drawText(currentDayOfTheWeek, px - currentDayOfTheWeekWidth/2, py + fifthRadius/2 +40, fontPaint);
-
-
-        fontPaint.setTextSize(currentTimeFontSize);
-        fontPaint.setStyle(Paint.Style.FILL_AND_STROKE);
-        fontPaint.setTypeface(Typeface.create(Typeface.SERIF, Typeface.BOLD));
-        float timeWidth = fontPaint.measureText(currentTime);
-        Rect textBounds = new Rect();
-        fontPaint.getTextBounds(currentTime, 0, currentTime.length(), textBounds);
-        float timeHeight = textBounds.height();
-        canvas.drawText(currentTime, px - timeWidth/2, py + timeHeight/2, fontPaint);
 
 
     }
